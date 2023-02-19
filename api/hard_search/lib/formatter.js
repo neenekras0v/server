@@ -77,8 +77,24 @@ function formatDate(date) {
 }
 
 function formatCityFromPersonalName(name, address) {
-  let city = 'Пермь';
-  try {
+  let city = '';
+
+  if (name.match(/МСК/gi)) {
+    city = 'Москва';
+    if (name.match(/Тверь/gi)) {
+      city = 'Тверь';
+    }
+  } else if (name.match(/ЕКБ/g)) {
+    city = 'Екатеринбург';
+  } else if (name.match(/ПРМ/g)) {
+    city = 'Пермь';
+  } else if (name.match(/Тверь/gi)) {
+    city = 'Тверь';
+  } else {
+    city = '';
+  }
+
+  if (city?.length <= 0) {
     if (address?.length > 3) {
       if (address.match(/МСК/gi) || address.match(/Моск/gi)) {
         city = 'Москва';
@@ -91,39 +107,7 @@ function formatCityFromPersonalName(name, address) {
         city = 'Пермь';
       } else if (address.match(/Тверь/gi)) {
         city = 'Тверь';
-      } else {
-        city = 'Пермь';
       }
-    } else {
-      if (name.match(/МСК/gi) || name.match(/Моск/gi)) {
-        city = 'Москва';
-        if (name.match(/Тверь/gi)) {
-          city = 'Тверь';
-        }
-      } else if (name.match(/ЕКБ/g) || name.match(/Екатеринбург/gi)) {
-        city = 'Екатеринбург';
-      } else if (name.match(/ПРМ/g) || name.match(/Пермь/gi)) {
-        city = 'Пермь';
-      } else if (name.match(/Тверь/gi)) {
-        city = 'Тверь';
-      } else {
-        city = 'Пермь';
-      }
-    }
-  } catch (error) {
-    if (name.match(/МСК/gi) || name.match(/Москва/gi)) {
-      city = 'Москва';
-      if (name.match(/Тверь/gi)) {
-        city = 'Тверь';
-      }
-    } else if (name.match(/ЕКБ/g) || name.match(/Екатеринбург/gi)) {
-      city = 'Екатеринбург';
-    } else if (name.match(/ПРМ/g) || name.match(/Пермь/gi)) {
-      city = 'Пермь';
-    } else if (name.match(/Тверь/gi)) {
-      city = 'Тверь';
-    } else {
-      city = 'Пермь';
     }
   }
 
@@ -157,7 +141,7 @@ function formatGender(vacancy, name) {
 
     let toArray = name?.split(/\s/);
 
-    if (toArray?.length > 2) {
+    if (toArray?.length > 1) {
       let gen = petrovich.detect_gender(toArray[toArray?.length - 1]);
       if (gen === 'female') {
         gender = 'ЖЕН';
@@ -192,8 +176,23 @@ function formatPhone(phone) {
   }
 }
 
+function formatTypeTimeWork(start, end) {
+  let type = '';
+
+  if (Number(start) <= Number(end)) {
+    type = 'День';
+  } else if (Number(start) >= Number(end)) {
+    type = 'Ночь';
+  } else if (Number(start) === Number(end)) {
+    type = 'Сутки';
+  }
+
+  return type;
+}
+
 module.exports = {
   formatCity,
+  formatTypeTimeWork,
   formatDayNumber,
   formatCityFromPersonalName,
   formatName,

@@ -13,6 +13,7 @@ const {
   formatDateBirth,
   formatDate,
   formatDateDiff,
+  formatTypeTimeWork,
   formatPhone,
   formatGender,
   formatCity,
@@ -57,6 +58,8 @@ async function person(id, dateStart, dateEnd) {
 
     let person = {
       id: id,
+      crm_name: PersonProfile.Name,
+      address: PersonProfile.Address,
       name: formatName(PersonProfile.Name),
       city: formatCityFromPersonalName(
         PersonProfile.Name,
@@ -96,6 +99,7 @@ async function person(id, dateStart, dateEnd) {
             id: work.WorkListId,
             status: 'busy',
             date: formatDate(work.Date),
+            typeTimeWork: formatTypeTimeWork(work.After, work.Before),
             timeStart: work.After,
             timeEnd: work.Before,
             city: formatCity(work.Address),
@@ -135,18 +139,43 @@ async function person(id, dateStart, dateEnd) {
     let OrderList = await orderList(OrderListDateset);
 
     await _.forEach(OrderList, async (order) => {
-      let hour = moment().tz('Asia/Yekaterinburg').format('HH');
+      let stopOrder = false;
+
       let yesterday = moment()
         .tz('Asia/Yekaterinburg')
         .add(-1, 'day')
         .format('DD.MM.YYYY');
 
+      let todayHour = moment().tz('Asia/Yekaterinburg').format('HH');
+      let today = moment().tz('Asia/Yekaterinburg').format('DD.MM.YYYY');
+
+      if (order.date === today && Number(todayHour) >= Number(order.timeEnd)) {
+        stopOrder = true;
+      }
+      // _.forEach(person.work, async (busy) => {
+      //   let busyPlusDayDate = moment(busy.date, 'DD.MM.YYYY')
+      //     .tz('Asia/Yekaterinburg')
+      //     .add(1, 'day')
+      //     .format('DD.MM.YYYY');
+      //   if (
+      //     busyPlusDayDate === order.date &&
+      //     busy.typeTimeWork === 'Ночь' &&
+      //     order.typeTimeWork === 'День'
+      //   ) {
+      //     stopOrder = true;
+      //   }
+      // });
+
       if (order.city === person.city && yesterday != order.date) {
         if (person.gender === 'МУЖ') {
-          person.work.push(order);
+          if (!stopOrder) {
+            person.work.push(order);
+          }
         } else if (person.gender === 'ЖЕН') {
           if (order.gender === 'ЖЕН') {
-            person.work.push(order);
+            if (!stopOrder) {
+              person.work.push(order);
+            }
           }
         }
       }

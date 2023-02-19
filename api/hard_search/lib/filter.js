@@ -15,12 +15,22 @@ const {
   formatPhone,
   formatGender,
   formatCity,
+  formatTypeTimeWork,
 } = require('./formatter');
 
 const _ = require('lodash');
 const moment = require('moment-timezone');
 
 async function filter() {
+  let stopList = [];
+
+  let keys = await redisClient.sendCommand(['keys', 'stopList:*']);
+
+  await _.forEach(keys, async (key) => {
+    let value = await redisClient.get(key);
+    stopList.push(value);
+  });
+
   let dateStart = moment()
     .tz('Asia/Yekaterinburg')
     .add(-1, 'day')
@@ -37,22 +47,15 @@ async function filter() {
   const OrderList = await orderList([dateStart, dateEnd]);
 
   function vacancy(key) {
-    let vacancy = _.find(VacancyList, function (item) {
-      return item.id === key;
-    });
+    try {
+      let vacancy = _.find(VacancyList, function (item) {
+        return item.id === key;
+      });
 
-    return vacancy;
-  }
-
-  let stopList = [];
-
-  for await (const key of redisClient.scanIterator({
-    TYPE: 'string',
-    MATCH: 'stopList' + '*',
-    COUNT: 1000,
-  })) {
-    let value = await redisClient.get(key);
-    stopList.push(value);
+      return vacancy.name;
+    } catch {
+      return 'Комплектовщик';
+    }
   }
 
   let filterList = [];
@@ -62,11 +65,13 @@ async function filter() {
 
     let user = {
       id: person.Id,
+      crm_name: person.Name,
+      address: person.Address,
       name: formatName(person.Name),
       city: formatCityFromPersonalName(person.Name, person.Address),
       access: true,
-      gender: formatGender(vacancy(person.Pid).name, person.Name),
-      vacancy: vacancy(person.Pid).name,
+      gender: formatGender(vacancy(person.Pid), person.Name),
+      vacancy: vacancy(person.Pid),
       phone: formatPhone(person.Phone),
       old: {
         date: formatDate(person.DateBirth),
@@ -93,6 +98,7 @@ async function filter() {
         let item = {
           id: work.WorkListId,
           status: 'busy',
+          typeTimeWork: formatTypeTimeWork(work.After, work.Before),
           date: formatDate(work.Date),
           timeStart: work.After,
           timeEnd: work.Before,
@@ -110,17 +116,44 @@ async function filter() {
     });
 
     await _.forEach(OrderList, async (order) => {
+      let stopOrder = false;
+
       let yesterday = moment()
         .tz('Asia/Yekaterinburg')
         .add(-1, 'day')
         .format('DD.MM.YYYY');
 
+      let todayHour = moment().tz('Asia/Yekaterinburg').format('HH');
+      let today = moment().tz('Asia/Yekaterinburg').format('DD.MM.YYYY');
+
+      if (order.date === today && Number(todayHour) >= Number(order.timeEnd)) {
+        stopOrder = true;
+      }
+
+      _.forEach(user.work, async (busy) => {
+        let busyPlusDayDate = moment(busy.date, 'DD.MM.YYYY')
+          .tz('Asia/Yekaterinburg')
+          .add(1, 'day')
+          .format('DD.MM.YYYY');
+        if (
+          busyPlusDayDate === order.date &&
+          busy.typeTimeWork === 'Ночь' &&
+          order.typeTimeWork === 'День'
+        ) {
+          stopOrder = true;
+        }
+      });
+
       if (order.city === user.city && yesterday != order.date) {
         if (user.gender === 'МУЖ') {
-          user.work.push(order);
+          if (!stopOrder) {
+            user.work.push(order);
+          }
         } else if (user.gender === 'ЖЕН') {
           if (order.gender === 'ЖЕН') {
-            user.work.push(order);
+            if (!stopOrder) {
+              user.work.push(order);
+            }
           }
         }
       }
@@ -158,6 +191,10 @@ async function filter() {
       stop = true;
     }
 
+    if (user.comment?.match(/@ignore/gi)) {
+      stop = true;
+    }
+
     if (dateFree?.length <= 0) {
       stop = true;
     }
@@ -179,30 +216,34 @@ async function filter() {
 }
 
 async function resultFilter() {
-  let result = await filter();
+  try {
+    let result = await filter();
 
-  result = await _.orderBy(
-    result,
-    (i) => moment(i.create.date, 'DD.MM.YYYY').format('YYYY-MM-DD'),
-    'desc'
-  );
+    result = await _.orderBy(
+      result,
+      (i) => moment(i.create.date, 'DD.MM.YYYY').format('YYYY-MM-DD'),
+      'desc'
+    );
 
-  let free = await _.orderBy(
-    result.free,
-    (i) => moment(i, 'DD.MM.YYYY').format('YYYY-MM-DD'),
-    'asc'
-  );
+    let free = await _.orderBy(
+      result.free,
+      (i) => moment(i, 'DD.MM.YYYY').format('YYYY-MM-DD'),
+      'asc'
+    );
 
-  let work = await _.orderBy(
-    result.work,
-    (i) => moment(i.date, 'DD.MM.YYYY').format('YYYY-MM-DD'),
-    'asc'
-  );
+    let work = await _.orderBy(
+      result.work,
+      (i) => moment(i.date, 'DD.MM.YYYY').format('YYYY-MM-DD'),
+      'asc'
+    );
 
-  result.work = await work;
-  result.free = await free;
+    result.work = await work;
+    result.free = await free;
 
-  return { count: result?.length, user: result[0] };
+    return { count: result?.length, user: result[0] };
+  } catch (error) {
+    return [];
+  }
 }
 
 module.exports = resultFilter;

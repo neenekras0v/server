@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const hardSearch = require('./hardSearch/route');
+const hardSearch = require('./hard_search/route');
 const logger = require('./logger/route');
 
 router.use('/lg', logger);

@@ -1,6 +1,8 @@
 const router = require('express').Router();
 
-const { person, resultPerson } = require('./lib/person');
+const _ = require('lodash');
+
+const { resultPerson } = require('./lib/person');
 const resultFilter = require('./lib/filter');
 
 const workList = require('./lib/load/workList');
@@ -17,23 +19,18 @@ const redisClient = require('./lib/connector/redis');
 router.get('/stop', async (req, res) => {
   let { id, ex } = req.query;
 
+  let isStopList = await redisClient.get('stopList:' + String(id));
+
+  if (isStopList) {
+    await redisClient.del('stopList:' + String(id));
+  }
+
   await redisClient.set('stopList:' + String(id), String(id), {
     EX: Number(ex),
     NX: true,
   });
 
-  let stopList = [];
-
-  for await (const key of redisClient.scanIterator({
-    TYPE: 'string',
-    MATCH: 'stopList' + '*',
-    COUNT: 1000,
-  })) {
-    let value = await redisClient.get(key);
-    stopList.push(value);
-  }
-
-  res.status(200).json({ stopList });
+  res.status(200).json({ status: 'OK' });
 });
 
 router.get('/rating', async (req, res) => {
@@ -56,44 +53,88 @@ router.get('/rating', async (req, res) => {
   res.status(200).json({ rating: sum.toFixed(1) });
 });
 
+router.get('/not-answer', async (req, res) => {
+  try {
+    let { id } = req.query;
+
+    let todayHour = moment().tz('Asia/Yekaterinburg').format('HH');
+    let timeAwait = (24 - Number(todayHour)) * 3600;
+
+    let exTime = 900;
+
+    let value = await redisClient.get('not_answer:' + id);
+
+    if (!value) {
+      value = 1;
+    }
+
+    if (Number(value) === 1) {
+      exTime = 900;
+      value = Number(value) + 1;
+    } else if (Number(value) === 2) {
+      exTime = 3600 * 3;
+      value = Number(value) + 1;
+      console.log(value);
+    } else if (Number(value) === 3) {
+      exTime = Number(timeAwait);
+    }
+
+    await redisClient.del('not_answer:' + String(id));
+    await redisClient.set('not_answer:' + id, Number(value), {
+      EX: Number(timeAwait),
+      NX: true,
+    });
+
+    let isStopList = await redisClient.get('stopList:' + String(id));
+
+    if (isStopList) {
+      await redisClient.del('stopList:' + String(id));
+    }
+
+    await redisClient.set('stopList:' + String(id), String(id), {
+      EX: Number(exTime),
+      NX: true,
+    });
+
+    return res
+      .status(200)
+      .json({ status: 'ok', payload: { not_answer: value } });
+  } catch (error) {
+    res.status(500).json({ status: 'bad', error: error.message });
+  }
+});
+
+router.get('/comment/add', async (req, res) => {
+  try {
+    let { id, text } = req.query;
+
+    let uid = uuidv4();
+
+    await redisClient.set(`comment:${id}:${uid}`, String(text), {
+      EX: Number(104400),
+      NX: true,
+    });
+
+    return res.status(200).json({ status: 'ok', payload: text });
+  } catch (error) {
+    res.status(500).json({ status: 'bad', error: error.message });
+  }
+});
+
 router.get('/comment', async (req, res) => {
-  let { id, event, text } = req.query;
+  let { id } = req.query;
 
-  let date = moment().tz('Asia/Yekaterinburg').format('DD.MM.YYYY HH:mm');
-  let commentId = uuidv4();
-
-  let comments = [];
-
-  let comment = {
-    event,
-    text,
-    date,
+  const results = [];
+  const iteratorParams = {
+    MATCH: 'comment:' + id + ':*',
+    COUNT: 100,
   };
-
-  if (text) {
-    await redisClient.set(
-      'comment' + String(id) + ':' + commentId,
-      JSON.stringify(comment),
-      {
-        EX: Number(moment.duration('23:59', 'HH:mm').asSeconds()),
-        NX: true,
-      }
-    );
-
-    await logger(id, event, text);
-  }
-
-  for await (const key of redisClient.scanIterator({
-    TYPE: 'string',
-    MATCH: 'comment' + String(id) + ':' + '*',
-    COUNT: 1000,
-  })) {
+  for await (const key of redisClient.scanIterator(iteratorParams)) {
     let value = await redisClient.get(key);
-    value = JSON.parse(value);
-    comments.push(value);
+    results.push(value);
   }
 
-  res.status(200).json(comments);
+  res.status(200).json({ status: 'ok', payload: results });
 });
 
 router.get('/person-next', async (req, res) => {
@@ -111,6 +152,7 @@ router.get('/person-next', async (req, res) => {
 
     return res.status(200).json({ status: 'ok', payload: Filter });
   } catch (error) {
+    return res.status(200).json({ status: 'ok', payload: [] });
     res.status(500).json({ status: 'bad', error: error.message });
   }
 });

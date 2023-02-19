@@ -5,7 +5,11 @@ const moment = require('moment-timezone');
 const vacancyList = require('./vacancyList');
 const userList = require('./userList');
 
-const { formatDayNumber, formatCity } = require('../formatter');
+const {
+  formatDayNumber,
+  formatCity,
+  formatTypeTimeWork,
+} = require('../formatter');
 
 async function orderList(dateset) {
   try {
@@ -82,6 +86,7 @@ async function orderList(dateset) {
           id: item.WorkAllListsId,
           status: 'free',
           date: '',
+          typeTimeWork: formatTypeTimeWork(item.After, item.Before),
           timeStart: item.After,
           timeEnd: item.Before,
           city: formatCity(item.Address),

@@ -1,5 +1,5 @@
 const axios = require('axios');
-const personalOne = require('../hardSearch/lib/load/personProfile');
+const personalOne = require('../hard_search/lib/load/personProfile');
 
 async function logger(id, event, text) {
   let token = '5549539765:AAFh_XU_fGgaAk0WyTmHXpX6e7-14yapxz8';

@@ -149,22 +149,22 @@ async function person(id, dateStart, dateEnd) {
       let todayHour = moment().tz('Asia/Yekaterinburg').format('HH');
       let today = moment().tz('Asia/Yekaterinburg').format('DD.MM.YYYY');
 
-      if (order.date === today && Number(todayHour) >= Number(order.timeEnd)) {
-        stopOrder = true;
-      }
-      // _.forEach(person.work, async (busy) => {
-      //   let busyPlusDayDate = moment(busy.date, 'DD.MM.YYYY')
-      //     .tz('Asia/Yekaterinburg')
-      //     .add(1, 'day')
-      //     .format('DD.MM.YYYY');
-      //   if (
-      //     busyPlusDayDate === order.date &&
-      //     busy.typeTimeWork === 'Ночь' &&
-      //     order.typeTimeWork === 'День'
-      //   ) {
-      //     stopOrder = true;
-      //   }
-      // });
+      // if (order.date === today && Number(todayHour) >= Number(order.timeEnd)) {
+      //   stopOrder = true;
+      // }
+      _.forEach(person.work, async (busy) => {
+        let busyPlusDayDate = moment(busy.date, 'DD.MM.YYYY')
+          .tz('Asia/Yekaterinburg')
+          .add(1, 'day')
+          .format('DD.MM.YYYY');
+        if (
+          busyPlusDayDate === order.date &&
+          busy.typeTimeWork === 'Ночь' &&
+          order.typeTimeWork === 'День'
+        ) {
+          stopOrder = true;
+        }
+      });
 
       if (order.city === person.city && yesterday != order.date) {
         if (person.gender === 'МУЖ') {

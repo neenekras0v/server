@@ -9,6 +9,8 @@ const workList = require('./lib/load/workList');
 
 const personListSearch = require('./lib/load/personListSearch');
 
+const orderList = require('./lib/load/orderList');
+
 const logger = require('../logger/logger');
 
 const { v4: uuidv4 } = require('uuid');
@@ -147,7 +149,10 @@ router.get('/comment', async (req, res) => {
 
 router.get('/person-next', async (req, res) => {
   try {
-    let Filter = await resultFilter();
+
+    let { city } = req.query;
+
+    let Filter = await resultFilter(city);
 
     await redisClient.set(
       'stopList:' + String(Filter.user.id),
@@ -213,4 +218,23 @@ router.get('/person-list', async (req, res) => {
   }
 });
 
+router.get('/order-list', async (req, res) => {
+  try {
+    let dateStart = moment()
+      .tz('Asia/Yekaterinburg')
+      .add(-1, 'day')
+      .format('YYYY-MM-DD');
+
+    let dateEnd = moment()
+      .tz('Asia/Yekaterinburg')
+      .add(3, 'day')
+      .format('YYYY-MM-DD');
+
+    let OrderList = await orderList([dateStart, dateEnd]);
+
+    return res.status(200).json({ status: 'ok', payload: OrderList });
+  } catch (error) {
+    res.status(500).json({ status: 'bad', error: error.message });
+  }
+});
 module.exports = router;

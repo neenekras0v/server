@@ -149,9 +149,9 @@ async function person(id, dateStart, dateEnd) {
       let todayHour = moment().tz('Asia/Yekaterinburg').format('HH');
       let today = moment().tz('Asia/Yekaterinburg').format('DD.MM.YYYY');
 
-      // if (order.date === today && Number(todayHour) >= Number(order.timeEnd)) {
-      //   stopOrder = true;
-      // }
+      if (order.date === today && Number(todayHour) >= Number(order.timeEnd)) {
+        stopOrder = true;
+      }
       _.forEach(person.work, async (busy) => {
         let busyPlusDayDate = moment(busy.date, 'DD.MM.YYYY')
           .tz('Asia/Yekaterinburg')

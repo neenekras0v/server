@@ -149,10 +149,7 @@ router.get('/comment', async (req, res) => {
 
 router.get('/person-next', async (req, res) => {
   try {
-
-    let { city } = req.query;
-
-    let Filter = await resultFilter(city);
+    let Filter = await resultFilter();
 
     await redisClient.set(
       'stopList:' + String(Filter.user.id),

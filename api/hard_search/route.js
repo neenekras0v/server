@@ -59,6 +59,8 @@ router.get('/not-answer', async (req, res) => {
   try {
     let { id } = req.query;
 
+    console.log(id);
+
     let todayHour = moment().tz('Asia/Yekaterinburg').format('HH');
     let timeAwait = (24 - Number(todayHour)) * 3600;
 
@@ -84,8 +86,9 @@ router.get('/not-answer', async (req, res) => {
         exTime = 3600 * 2;
       }
       value = Number(value) + 1;
-      console.log(value);
     } else if (Number(value) === 3) {
+      exTime = 3600;
+    } else if (Number(value) === 4) {
       exTime = Number(timeAwait);
     }
 
@@ -163,7 +166,7 @@ router.get('/person-next', async (req, res) => {
     return res.status(200).json({ status: 'ok', payload: Filter });
   } catch (error) {
     return res.status(200).json({ status: 'ok', payload: [] });
-    res.status(500).json({ status: 'bad', error: error.message });
+    // res.status(500).json({ status: 'bad', error: error.message });
   }
 });
 

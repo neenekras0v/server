@@ -73,22 +73,12 @@ router.get('/not-answer', async (req, res) => {
     }
 
     if (Number(value) === 1) {
-      if (Number(todayHour) < 12) {
-        exTime = 3600;
-      } else if (Number(todayHour) > 12) {
-        exTime = 900;
-      }
+      exTime = 3600;
       value = Number(value) + 1;
     } else if (Number(value) === 2) {
-      if (Number(todayHour) < 12) {
-        exTime = 3600 * 3;
-      } else if (Number(todayHour) > 12) {
-        exTime = 3600 * 2;
-      }
+      exTime = 3600 * 2;
       value = Number(value) + 1;
-    } else if (Number(value) === 3) {
-      exTime = 3600;
-    } else if (Number(value) === 4) {
+    } else {
       exTime = Number(timeAwait);
     }
 
